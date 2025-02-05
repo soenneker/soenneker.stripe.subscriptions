@@ -33,8 +33,7 @@ public class StripeSubscriptionsUtil : IStripeSubscriptionsUtil
         {
             StripeClient client = await stripeUtil.Get(cancellationToken).NoSync();
 
-            var service = new SubscriptionService(client);
-            return service;
+            return new SubscriptionService(client);
         });
     }
 
@@ -127,9 +126,7 @@ public class StripeSubscriptionsUtil : IStripeSubscriptionsUtil
         if (response.IsNullOrEmpty())
             return null;
 
-        Subscription? result = response.FirstOrDefault();
-
-        return result;
+        return response.FirstOrDefault();
     }
 
     public async ValueTask CancelAll(CancellationToken cancellationToken = default)
