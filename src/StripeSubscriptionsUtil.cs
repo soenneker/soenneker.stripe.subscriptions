@@ -110,8 +110,7 @@ public class StripeSubscriptionsUtil : IStripeSubscriptionsUtil
             ProrationBehavior = "none",
         };
 
-        Subscription? result = await (await _service.Get(cancellationToken).NoSync()).UpdateAsync(subscription.Id, options, cancellationToken: cancellationToken).NoSync();
-        return result;
+        return await (await _service.Get(cancellationToken).NoSync()).UpdateAsync(subscription.Id, options, cancellationToken: cancellationToken).NoSync();
     }
 
     public async ValueTask<Subscription?> GetByUserId(string userId, CancellationToken cancellationToken = default)
