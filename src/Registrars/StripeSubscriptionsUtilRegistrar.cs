@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Soenneker.Stripe.Customers.Registrars;
+using Soenneker.Stripe.Client.Registrars;
 using Soenneker.Stripe.Subscriptions.Abstract;
 
 namespace Soenneker.Stripe.Subscriptions.Registrars;
@@ -15,8 +15,7 @@ public static class StripeSubscriptionsUtilRegistrar
     /// </summary>
     public static IServiceCollection AddStripeSubscriptionsUtilAsSingleton(this IServiceCollection services)
     {
-        services.AddStripeCustomersUtilAsSingleton()
-                .TryAddSingleton<IStripeSubscriptionsUtil, StripeSubscriptionsUtil>();
+        services.AddStripeClientUtilAsSingleton().TryAddSingleton<IStripeSubscriptionsUtil, StripeSubscriptionsUtil>();
 
         return services;
     }
@@ -26,8 +25,7 @@ public static class StripeSubscriptionsUtilRegistrar
     /// </summary>
     public static IServiceCollection AddStripeSubscriptionsUtilAsScoped(this IServiceCollection services)
     {
-        services.AddStripeCustomersUtilAsScoped()
-                .TryAddScoped<IStripeSubscriptionsUtil, StripeSubscriptionsUtil>();
+        services.AddStripeClientUtilAsSingleton().TryAddScoped<IStripeSubscriptionsUtil, StripeSubscriptionsUtil>();
 
         return services;
     }

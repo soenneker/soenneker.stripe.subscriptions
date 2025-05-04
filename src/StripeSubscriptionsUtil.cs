@@ -5,11 +5,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Soenneker.Extensions.DateTime;
-using Soenneker.Extensions.Enumerable;
 using Soenneker.Extensions.Task;
 using Soenneker.Extensions.ValueTask;
 using Soenneker.Stripe.Client.Abstract;
-using Soenneker.Stripe.Customers.Abstract;
 using Soenneker.Stripe.Subscriptions.Abstract;
 using Soenneker.Utils.AsyncSingleton;
 using Stripe;
@@ -20,97 +18,38 @@ namespace Soenneker.Stripe.Subscriptions;
 public class StripeSubscriptionsUtil : IStripeSubscriptionsUtil
 {
     private readonly ILogger<StripeSubscriptionsUtil> _logger;
-    private readonly IStripeCustomersUtil _stripeCustomerUtil;
-
     private readonly AsyncSingleton<SubscriptionService> _service;
 
-    public StripeSubscriptionsUtil(ILogger<StripeSubscriptionsUtil> logger, IStripeClientUtil stripeUtil, IStripeCustomersUtil stripeCustomerUtil)
+    public StripeSubscriptionsUtil(ILogger<StripeSubscriptionsUtil> logger, IStripeClientUtil stripeUtil)
     {
         _logger = logger;
-        _stripeCustomerUtil = stripeCustomerUtil;
-
         _service = new AsyncSingleton<SubscriptionService>(async (cancellationToken, _) =>
         {
             StripeClient client = await stripeUtil.Get(cancellationToken).NoSync();
-
             return new SubscriptionService(client);
         });
     }
 
-    public async ValueTask<Subscription?> Create(string email, string name, string userId, CancellationToken cancellationToken = default)
+    public async ValueTask<Subscription?> Create(string customerId, string priceId, string userId, string? defaultPaymentMethodId = null, DateTimeOffset? trialEnd = null, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(")) StripeSubscriptionsUtil: Creating subscription {email} ...", email);
-
         var options = new SubscriptionCreateOptions
         {
-            Metadata = new Dictionary<string, string>
-            {
-                {"userId", userId}
-            }
+            Customer = customerId,
+            Metadata = new Dictionary<string, string> { { "userId", userId } },
+            Items = [new SubscriptionItemOptions {Price = priceId}],
+            DefaultPaymentMethod = defaultPaymentMethodId,
+            TrialEnd = trialEnd?.UtcDateTime,
         };
 
-        Subscription? subscription = await (await _service.Get(cancellationToken).NoSync()).CreateAsync(options, cancellationToken: cancellationToken).NoSync();
-
-        _logger.LogDebug(")) StripeSubscriptionsUtil: Created subscription {email}", email);
-
-        return subscription;
+        return await (await _service.Get(cancellationToken).NoSync()).CreateAsync(options, cancellationToken: cancellationToken).NoSync();
     }
 
-    public async ValueTask<List<Subscription>> GetAll(bool activeOnly = true, CancellationToken cancellationToken = default)
+    public async ValueTask<List<Subscription>> GetByCustomerId(string customerId, CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug(")) StripeSubscriptionsUtil: Getting all Stripe subscriptions...");
-
-        IAsyncEnumerable<Subscription>? response = (await _service.Get(cancellationToken).NoSync()).ListAutoPagingAsync(cancellationToken: cancellationToken);
-
-        if (response == null)
-            throw new NullReferenceException("Stripe subscription response is null");
-
-        List<Subscription> result = await response.ToListAsync(cancellationToken).NoSync();
-
-        if (activeOnly)
-            result = result.Where(s => s.Status == "active").ToList();
-
-        _logger.LogDebug(")) StripeSubscriptionsUtil: Finished retrieving all Stripe subscriptions");
-
-        if (result.Empty())
-            _logger.LogWarning("Stripe subscription response is empty");
-
-        return result;
-    }
-
-    public async ValueTask UpdateBillingAnchorForAll(DateTime dateTime, TimeZoneInfo timeZoneInfo, CancellationToken cancellationToken = default)
-    {
-        List<Subscription> allSubscriptions = await GetAll(cancellationToken: cancellationToken).NoSync();
-
-        _logger.LogDebug(")) StripeSubscriptionsUtil: Updating billing anchor for all subscriptions to dateTime ({dateTime}) ...", dateTime.ToTzDateTimeFormat(timeZoneInfo));
-
-        foreach (Subscription subscription in allSubscriptions)
-        {
-            await UpdateBillingAnchor(subscription, dateTime, timeZoneInfo, cancellationToken).NoSync();
-        }
-    }
-
-    public async ValueTask<Subscription?> UpdateBillingAnchor(Subscription subscription, DateTime dateTime, TimeZoneInfo timeZoneInfo, CancellationToken cancellationToken = default)
-    {
-        Customer? customer = await _stripeCustomerUtil.Get(subscription.CustomerId, cancellationToken).NoSync();
-
-        if (customer == null)
-        {
-            _logger.LogDebug("Stripe customer is null for subscription ({subscriptionId}), skipping", subscription.Id);
-            return null;
-        }
-
-        long unixTime = dateTime.ToUnixTimeSeconds();
-
-        _logger.LogDebug(")) StripeSubscriptionsUtil: Updating billing anchor for customer ({customer}) to ({dateTime}) ...", customer.Email, dateTime.ToTzDateTimeFormat(timeZoneInfo));
-
-        var options = new SubscriptionUpdateOptions
-        {
-            TrialEnd = DateTimeOffset.FromUnixTimeSeconds(unixTime).UtcDateTime,
-            ProrationBehavior = "none",
-        };
-
-        return await (await _service.Get(cancellationToken).NoSync()).UpdateAsync(subscription.Id, options, cancellationToken: cancellationToken).NoSync();
+        var options = new SubscriptionListOptions { Customer = customerId };
+        SubscriptionService service = await _service.Get(cancellationToken).NoSync();
+        IAsyncEnumerable<Subscription>? subs = service.ListAutoPagingAsync(options, cancellationToken: cancellationToken);
+        return await subs.ToListAsync(cancellationToken).NoSync();
     }
 
     public async ValueTask<Subscription?> GetByUserId(string userId, CancellationToken cancellationToken = default)
@@ -120,44 +59,110 @@ public class StripeSubscriptionsUtil : IStripeSubscriptionsUtil
             Query = $"metadata[\"userId\"]:\"{userId}\""
         };
 
-        List<Subscription>? response = (await (await _service.Get(cancellationToken).NoSync()).SearchAsync(options, cancellationToken: cancellationToken).NoSync()).Data;
+        SubscriptionService service = await _service.Get(cancellationToken).NoSync();
+        StripeSearchResult<Subscription>? response = await service.SearchAsync(options, cancellationToken: cancellationToken).NoSync();
+        return response?.Data?.FirstOrDefault();
+    }
 
-        if (response.IsNullOrEmpty())
-            return null;
+    public async ValueTask<List<Subscription>> GetAll(bool activeOnly = true, CancellationToken cancellationToken = default)
+    {
+        SubscriptionService service = await _service.Get(cancellationToken).NoSync();
+        List<Subscription> subs = await service.ListAutoPagingAsync(cancellationToken: cancellationToken).ToListAsync(cancellationToken).NoSync();
+        return activeOnly ? subs.Where(s => s.Status == "active").ToList() : subs;
+    }
 
-        return response.FirstOrDefault();
+    public async ValueTask<Subscription?> UpdatePrice(string subscriptionId, string newPriceId, CancellationToken cancellationToken = default)
+    {
+        var updateOptions = new SubscriptionUpdateOptions
+        {
+            Items = [new SubscriptionItemOptions {Price = newPriceId}],
+            ProrationBehavior = "none"
+        };
+
+        SubscriptionService service = await _service.Get(cancellationToken).NoSync();
+        return await service.UpdateAsync(subscriptionId, updateOptions, cancellationToken: cancellationToken).NoSync();
+    }
+
+    public async ValueTask<Subscription?> UpdateBillingAnchor(Subscription subscription, DateTime dateTime, TimeZoneInfo timeZoneInfo, CancellationToken cancellationToken = default)
+    {
+        long unixTime = dateTime.ToUnixTimeSeconds();
+
+        var updateOptions = new SubscriptionUpdateOptions
+        {
+            TrialEnd = DateTimeOffset.FromUnixTimeSeconds(unixTime).UtcDateTime,
+            ProrationBehavior = "none",
+        };
+
+        SubscriptionService service = await _service.Get(cancellationToken).NoSync();
+        return await service.UpdateAsync(subscription.Id, updateOptions, cancellationToken: cancellationToken).NoSync();
+    }
+
+    public async ValueTask UpdateBillingAnchorForAll(DateTime dateTime, TimeZoneInfo timeZoneInfo, CancellationToken cancellationToken = default)
+    {
+        List<Subscription> all = await GetAll(cancellationToken: cancellationToken).NoSync();
+
+        foreach (Subscription subscription in all)
+        {
+            await UpdateBillingAnchor(subscription, dateTime, timeZoneInfo, cancellationToken).NoSync();
+        }
+    }
+
+    public async ValueTask CancelById(string subscriptionId, CancellationToken cancellationToken = default)
+    {
+        SubscriptionService service = await _service.Get(cancellationToken).NoSync();
+        await service.CancelAsync(subscriptionId, cancellationToken: cancellationToken).NoSync();
+    }
+
+    public async ValueTask CancelByUserId(string userId, CancellationToken cancellationToken = default)
+    {
+        Subscription? subscription = await GetByUserId(userId, cancellationToken).NoSync();
+        if (subscription != null)
+            await CancelById(subscription.Id, cancellationToken).NoSync();
+    }
+
+    public async ValueTask CancelAtPeriodEnd(string subscriptionId, CancellationToken cancellationToken = default)
+    {
+        var options = new SubscriptionUpdateOptions
+        {
+            CancelAtPeriodEnd = true
+        };
+
+        SubscriptionService service = await _service.Get(cancellationToken).NoSync();
+        await service.UpdateAsync(subscriptionId, options, cancellationToken: cancellationToken).NoSync();
+    }
+
+    public async ValueTask<Subscription?> Reactivate(string subscriptionId, CancellationToken cancellationToken = default)
+    {
+        var options = new SubscriptionUpdateOptions
+        {
+            CancelAtPeriodEnd = false
+        };
+
+        SubscriptionService service = await _service.Get(cancellationToken).NoSync();
+        return await service.UpdateAsync(subscriptionId, options, cancellationToken: cancellationToken).NoSync();
+    }
+
+    public async ValueTask<bool> IsActive(string subscriptionId, CancellationToken cancellationToken = default)
+    {
+        SubscriptionService service = await _service.Get(cancellationToken).NoSync();
+        Subscription? sub = await service.GetAsync(subscriptionId, cancellationToken: cancellationToken).NoSync();
+        return sub?.Status == "active";
     }
 
     public async ValueTask CancelAll(CancellationToken cancellationToken = default)
     {
-        _logger.LogWarning(")) StripeSubscriptionsUtil: Canceling all subscriptions...");
-
-        List<Subscription>? subscriptions = await GetAll(cancellationToken: cancellationToken).NoSync();
-
-        if (subscriptions == null)
-            return;
-
-        SubscriptionService service = await _service.Get(cancellationToken).NoSync();
-
-        foreach (Subscription subscription in subscriptions)
+        List<Subscription> all = await GetAll(false, cancellationToken).NoSync();
+        foreach (Subscription sub in all)
         {
-            await service.CancelAsync(subscription.Id, cancellationToken: cancellationToken).NoSync();
+            await CancelById(sub.Id, cancellationToken).NoSync();
         }
-
-        _logger.LogWarning(")) StripeSubscriptionsUtil: Canceling all subscriptions");
     }
 
-    public void Dispose()
-    {
-        GC.SuppressFinalize(this);
-
-        _service.Dispose();
-    }
+    public void Dispose() => _service.Dispose();
 
     public ValueTask DisposeAsync()
     {
         GC.SuppressFinalize(this);
-
         return _service.DisposeAsync();
     }
 }
