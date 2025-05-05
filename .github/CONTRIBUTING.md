@@ -1,4 +1,4 @@
-# Contributing to Soenneker.Stripe.Subscriptions
+﻿# Contributing to Soenneker.Stripe.Subscriptions
 
 We're excited that you're interested in contributing!
 
