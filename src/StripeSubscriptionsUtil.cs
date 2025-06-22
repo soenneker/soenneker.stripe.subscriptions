@@ -15,7 +15,7 @@ using Stripe;
 namespace Soenneker.Stripe.Subscriptions;
 
 ///<inheritdoc cref="IStripeSubscriptionsUtil"/>
-public class StripeSubscriptionsUtil : IStripeSubscriptionsUtil
+public sealed class StripeSubscriptionsUtil : IStripeSubscriptionsUtil
 {
     private readonly ILogger<StripeSubscriptionsUtil> _logger;
     private readonly AsyncSingleton<SubscriptionService> _service;
@@ -30,15 +30,17 @@ public class StripeSubscriptionsUtil : IStripeSubscriptionsUtil
         });
     }
 
-    public async ValueTask<Subscription?> Create(string customerId, string priceId, string userId, string? defaultPaymentMethodId = null, DateTimeOffset? trialEnd = null, CancellationToken cancellationToken = default)
+    public async ValueTask<Subscription?> Create(string customerId, string priceId, string userId, string? defaultPaymentMethodId = null,
+        DateTimeOffset? trialEnd = null, CancellationToken cancellationToken = default)
     {
         var options = new SubscriptionCreateOptions
         {
             Customer = customerId,
-            Metadata = new Dictionary<string, string> { { "userId", userId } },
+            Metadata = new Dictionary<string, string> {{"userId", userId}},
             Items = [new SubscriptionItemOptions {Price = priceId}],
             DefaultPaymentMethod = defaultPaymentMethodId,
             TrialEnd = trialEnd?.UtcDateTime,
+            AutomaticTax = new SubscriptionAutomaticTaxOptions {Enabled = false}
         };
 
         return await (await _service.Get(cancellationToken).NoSync()).CreateAsync(options, cancellationToken: cancellationToken).NoSync();
@@ -46,7 +48,7 @@ public class StripeSubscriptionsUtil : IStripeSubscriptionsUtil
 
     public async ValueTask<List<Subscription>> GetByCustomerId(string customerId, CancellationToken cancellationToken = default)
     {
-        var options = new SubscriptionListOptions { Customer = customerId };
+        var options = new SubscriptionListOptions {Customer = customerId};
         SubscriptionService service = await _service.Get(cancellationToken).NoSync();
         IAsyncEnumerable<Subscription>? subs = service.ListAutoPagingAsync(options, cancellationToken: cancellationToken);
         return await subs.ToListAsync(cancellationToken).NoSync();
@@ -83,7 +85,8 @@ public class StripeSubscriptionsUtil : IStripeSubscriptionsUtil
         return await service.UpdateAsync(subscriptionId, updateOptions, cancellationToken: cancellationToken).NoSync();
     }
 
-    public async ValueTask<Subscription?> UpdateBillingAnchor(Subscription subscription, DateTime dateTime, TimeZoneInfo timeZoneInfo, CancellationToken cancellationToken = default)
+    public async ValueTask<Subscription?> UpdateBillingAnchor(Subscription subscription, DateTime dateTime, TimeZoneInfo timeZoneInfo,
+        CancellationToken cancellationToken = default)
     {
         long unixTime = dateTime.ToUnixTimeSeconds();
 
@@ -162,7 +165,6 @@ public class StripeSubscriptionsUtil : IStripeSubscriptionsUtil
 
     public ValueTask DisposeAsync()
     {
-        GC.SuppressFinalize(this);
         return _service.DisposeAsync();
     }
 }
