@@ -1,125 +1,148 @@
-using Stripe;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.Threading;
 using System.Threading.Tasks;
+using Stripe;
 
 namespace Soenneker.Stripe.Subscriptions.Abstract;
 
 /// <summary>
-/// A utility for managing Stripe subscriptions, including creation, retrieval, billing anchor updates, plan changes, cancellation, and state inspection.
+/// Defines CRUD operations for Stripe subscriptions.
 /// </summary>
-public interface IStripeSubscriptionsUtil : IAsyncDisposable, IDisposable
+public interface IStripeSubscriptionsUtil : IDisposable, IAsyncDisposable
 {
     /// <summary>
-    /// Creates a new Stripe subscription for a customer with a specific price and optional default payment method and trial.
+    /// Creates a new subscription using the provided options.
     /// </summary>
-    /// <param name="customerId">The Stripe customer ID to associate the subscription with.</param>
-    /// <param name="priceId">The Stripe price ID to subscribe the customer to.</param>
-    /// <param name="userId">The internal user ID, stored as metadata for searchability.</param>
-    /// <param name="defaultPaymentMethodId">An optional payment method ID to use for the subscription.</param>
-    /// <param name="trialEnd">An optional trial end date for the subscription.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <param name="options">Stripe subscription create options.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The created <see cref="Subscription"/>, or null if creation failed.</returns>
-    [Pure]
-    ValueTask<Subscription?> Create(string customerId, string priceId, string userId, string? defaultPaymentMethodId = null, DateTimeOffset? trialEnd = null, CancellationToken cancellationToken = default);
+    ValueTask<Subscription?> Create(SubscriptionCreateOptions options, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Retrieves the first subscription associated with a specific user ID stored in metadata.
+    /// Creates a new subscription for a customer with a single price item.
     /// </summary>
-    /// <param name="userId">The internal user ID stored in subscription metadata.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns>The matching <see cref="Subscription"/> if found, otherwise null.</returns>
-    [Pure]
-    ValueTask<Subscription?> GetByUserId(string userId, CancellationToken cancellationToken = default);
+    /// <param name="customerId">The Stripe customer ID.</param>
+    /// <param name="priceId">The price ID for the subscription item.</param>
+    /// <param name="userId">An application-specific user identifier for metadata.</param>
+    /// <param name="defaultPaymentMethodId">Optional default payment method ID.</param>
+    /// <param name="trialEnd">Optional trial end date/time.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The created <see cref="Subscription"/>, or null if creation failed.</returns>
+    ValueTask<Subscription?> Create(string customerId, string priceId, string userId, string? defaultPaymentMethodId = null, DateTimeOffset? trialEnd = null,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Retrieves all subscriptions associated with a specific Stripe customer ID.
+    /// Retrieves a subscription by its Stripe subscription ID.
     /// </summary>
-    /// <param name="customerId">The Stripe customer ID to look up subscriptions for.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns>A list of <see cref="Subscription"/> objects for the customer.</returns>
-    [Pure]
+    /// <param name="subscriptionId">The subscription ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The <see cref="Subscription"/>, or null if not found.</returns>
+    ValueTask<Subscription?> GetById(string subscriptionId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves all subscriptions for a given customer.
+    /// </summary>
+    /// <param name="customerId">The Stripe customer ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>List of <see cref="Subscription"/> objects.</returns>
     ValueTask<List<Subscription>> GetByCustomerId(string customerId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Retrieves all subscriptions in the account, with optional filtering by active status.
+    /// Finds a subscription by the application-specific user ID stored in metadata.
     /// </summary>
-    /// <param name="activeOnly">If true, only active subscriptions will be returned.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns>A list of <see cref="Subscription"/> objects.</returns>
-    [Pure]
+    /// <param name="userId">The application user ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The <see cref="Subscription"/>, or null if none match.</returns>
+    ValueTask<Subscription?> GetByUserId(string userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists all subscriptions, optionally filtering only active ones.
+    /// </summary>
+    /// <param name="activeOnly">Whether to include only active subscriptions.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>List of <see cref="Subscription"/> objects.</returns>
     ValueTask<List<Subscription>> GetAll(bool activeOnly = true, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Changes the price (plan) for an existing subscription without proration.
+    /// Updates a subscription with the specified update options.
     /// </summary>
-    /// <param name="subscriptionId">The ID of the subscription to update.</param>
-    /// <param name="newPriceId">The new Stripe price ID to replace the current one.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns>The updated <see cref="Subscription"/> if successful, otherwise null.</returns>
+    /// <param name="subscriptionId">The subscription ID.</param>
+    /// <param name="updateOptions">Options describing the update.</param>
+    /// <param name="requestOptions">Optional Stripe request options.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The updated <see cref="Subscription"/>, or null if update failed.</returns>
+    ValueTask<Subscription?> Update(string subscriptionId, SubscriptionUpdateOptions updateOptions, RequestOptions? requestOptions = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Changes the price for an existing subscription without prorating.
+    /// </summary>
+    /// <param name="subscriptionId">The subscription ID.</param>
+    /// <param name="newPriceId">The new price ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The updated <see cref="Subscription"/>, or null if update failed.</returns>
     ValueTask<Subscription?> UpdatePrice(string subscriptionId, string newPriceId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Updates the trial end date (billing anchor) of a subscription.
+    /// Adjusts the billing anchor (trial end) date for a subscription without prorating.
     /// </summary>
     /// <param name="subscription">The subscription to update.</param>
-    /// <param name="dateTime">The new billing anchor as a DateTime.</param>
-    /// <param name="timeZoneInfo">The timezone to format logs/debug output.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns>The updated <see cref="Subscription"/>.</returns>
-    ValueTask<Subscription?> UpdateBillingAnchor(Subscription subscription, DateTime dateTime, TimeZoneInfo timeZoneInfo, CancellationToken cancellationToken = default);
+    /// <param name="dateTime">New billing anchor date/time.</param>
+    /// <param name="timeZoneInfo">Time zone of the provided date/time.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The updated <see cref="Subscription"/>, or null if update failed.</returns>
+    ValueTask<Subscription?> UpdateBillingAnchor(Subscription subscription, DateTime dateTime, TimeZoneInfo timeZoneInfo,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Updates the billing anchor (trial end date) of all active subscriptions to a specified date.
+    /// Applies a billing anchor update to all subscriptions.
     /// </summary>
-    /// <param name="dateTime">The new billing anchor as a DateTime.</param>
-    /// <param name="timeZoneInfo">The timezone to format logs/debug output.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <param name="dateTime">New billing anchor date/time for all subs.</param>
+    /// <param name="timeZoneInfo">Time zone of the provided date/time.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     ValueTask UpdateBillingAnchorForAll(DateTime dateTime, TimeZoneInfo timeZoneInfo, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Cancels a specific subscription immediately.
+    /// Immediately cancels a subscription.
     /// </summary>
-    /// <param name="subscriptionId">The ID of the subscription to cancel.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <param name="subscriptionId">The subscription ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     ValueTask CancelById(string subscriptionId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Cancels a subscription associated with a specific user ID (found via metadata).
+    /// Cancels a subscription associated with the given user ID.
     /// </summary>
-    /// <param name="userId">The internal user ID stored in metadata.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <param name="userId">The application user ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     ValueTask CancelByUserId(string userId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Cancels a subscription at the end of the current billing period instead of immediately.
+    /// Marks a subscription to cancel at the end of its current period.
     /// </summary>
-    /// <param name="subscriptionId">The ID of the subscription to cancel.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <param name="subscriptionId">The subscription ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     ValueTask CancelAtPeriodEnd(string subscriptionId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Reactivates a subscription that was previously marked to cancel at period end.
+    /// Reactivates a subscription that was set to cancel at period end.
     /// </summary>
-    /// <param name="subscriptionId">The ID of the subscription to reactivate.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns>The updated <see cref="Subscription"/> if successful.</returns>
+    /// <param name="subscriptionId">The subscription ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The updated <see cref="Subscription"/>, or null if reactivation failed.</returns>
     ValueTask<Subscription?> Reactivate(string subscriptionId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Checks whether the given subscription is currently active.
+    /// Checks if a subscription is currently active.
     /// </summary>
-    /// <param name="subscriptionId">The ID of the subscription to check.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns>True if the subscription is active, false otherwise.</returns>
-    [Pure]
+    /// <param name="subscriptionId">The subscription ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns><c>true</c> if active; otherwise, <c>false</c>.</returns>
     ValueTask<bool> IsActive(string subscriptionId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Cancels all subscriptions in the Stripe account. Use with extreme caution.
+    /// Cancels all subscriptions (active and inactive).
     /// </summary>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     ValueTask CancelAll(CancellationToken cancellationToken = default);
 }
