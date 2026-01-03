@@ -116,7 +116,7 @@ public sealed class StripeSubscriptionsUtil : IStripeSubscriptionsUtil
         return await Update(subscriptionId, options, null, cancellationToken);
     }
 
-    public async ValueTask<Subscription?> UpdateBillingAnchor(Subscription subscription, DateTime dateTime, TimeZoneInfo timeZoneInfo,
+    public async ValueTask<Subscription?> UpdateBillingAnchor(Subscription subscription, DateTimeOffset dateTime, TimeZoneInfo timeZoneInfo,
         CancellationToken cancellationToken = default)
     {
         long unixTime = dateTime.ToUnixTimeSeconds();
@@ -129,7 +129,7 @@ public sealed class StripeSubscriptionsUtil : IStripeSubscriptionsUtil
         return await Update(subscription.Id, options, null, cancellationToken);
     }
 
-    public async ValueTask UpdateBillingAnchorForAll(DateTime dateTime, TimeZoneInfo timeZoneInfo, CancellationToken cancellationToken = default)
+    public async ValueTask UpdateBillingAnchorForAll(DateTimeOffset dateTime, TimeZoneInfo timeZoneInfo, CancellationToken cancellationToken = default)
     {
         List<Subscription> allSubs = await GetAll(cancellationToken: cancellationToken)
             .NoSync();

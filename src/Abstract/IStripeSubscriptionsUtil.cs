@@ -92,7 +92,7 @@ public interface IStripeSubscriptionsUtil : IDisposable, IAsyncDisposable
     /// <param name="timeZoneInfo">Time zone of the provided date/time.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The updated <see cref="Subscription"/>, or null if update failed.</returns>
-    ValueTask<Subscription?> UpdateBillingAnchor(Subscription subscription, DateTime dateTime, TimeZoneInfo timeZoneInfo,
+    ValueTask<Subscription?> UpdateBillingAnchor(Subscription subscription, DateTimeOffset dateTime, TimeZoneInfo timeZoneInfo,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -101,7 +101,7 @@ public interface IStripeSubscriptionsUtil : IDisposable, IAsyncDisposable
     /// <param name="dateTime">New billing anchor date/time for all subs.</param>
     /// <param name="timeZoneInfo">Time zone of the provided date/time.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    ValueTask UpdateBillingAnchorForAll(DateTime dateTime, TimeZoneInfo timeZoneInfo, CancellationToken cancellationToken = default);
+    ValueTask UpdateBillingAnchorForAll(DateTimeOffset dateTime, TimeZoneInfo timeZoneInfo, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Immediately cancels a subscription.
