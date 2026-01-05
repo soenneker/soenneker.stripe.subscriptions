@@ -20,15 +20,20 @@ public sealed class StripeSubscriptionsUtil : IStripeSubscriptionsUtil
     private readonly ILogger<StripeSubscriptionsUtil> _logger;
     private readonly AsyncSingleton<SubscriptionService> _service;
 
+    private readonly IStripeClientUtil _stripeUtil;
+
     public StripeSubscriptionsUtil(ILogger<StripeSubscriptionsUtil> logger, IStripeClientUtil stripeUtil)
     {
         _logger = logger;
-        _service = new AsyncSingleton<SubscriptionService>(async cancellationToken =>
-        {
-            StripeClient client = await stripeUtil.Get(cancellationToken)
-                                                  .NoSync();
-            return new SubscriptionService(client);
-        });
+        _stripeUtil = stripeUtil;
+        _service = new AsyncSingleton<SubscriptionService>(CreateService);
+    }
+
+    private async ValueTask<SubscriptionService> CreateService(CancellationToken cancellationToken)
+    {
+        StripeClient client = await _stripeUtil.Get(cancellationToken)
+                                               .NoSync();
+        return new SubscriptionService(client);
     }
 
     public async ValueTask<Subscription?> Create(SubscriptionCreateOptions options, CancellationToken cancellationToken = default)
