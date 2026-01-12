@@ -96,10 +96,21 @@ public sealed class StripeSubscriptionsUtil : IStripeSubscriptionsUtil
         List<Subscription> allSubs = await service.ListAutoPagingAsync(cancellationToken: cancellationToken)
                                                   .ToListAsync(cancellationToken)
                                                   .NoSync();
-        return activeOnly
-            ? allSubs.Where(s => s.Status == "active")
-                     .ToList()
-            : allSubs;
+
+        if (!activeOnly || allSubs.Count == 0)
+            return allSubs;
+
+        // Avoid LINQ allocations; preserve order.
+        var active = new List<Subscription>(allSubs.Count);
+
+        for (var i = 0; i < allSubs.Count; i++)
+        {
+            Subscription s = allSubs[i];
+            if (s.Status == "active")
+                active.Add(s);
+        }
+
+        return active;
     }
 
     public async ValueTask<Subscription?> Update(string subscriptionId, SubscriptionUpdateOptions updateOptions, RequestOptions? requestOptions = null,
