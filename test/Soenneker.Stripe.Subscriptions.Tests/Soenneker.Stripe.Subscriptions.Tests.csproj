@@ -27,7 +27,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\Soenneker.Stripe.Subscriptions.csproj" />
+        <ProjectReference Include="..\..\src\Soenneker.Stripe.Subscriptions\Soenneker.Stripe.Subscriptions.csproj" />
     </ItemGroup>
 
     <ItemGroup>
