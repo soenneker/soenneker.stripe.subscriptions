@@ -38,7 +38,7 @@ jobs:
         run: dotnet build test/Soenneker.Stripe.Subscriptions.Tests/Soenneker.Stripe.Subscriptions.Tests.csproj --configuration Release --no-restore --verbosity minimal
 
       - name: Test
-        run: dotnet test test/Soenneker.Stripe.Subscriptions.Tests/Soenneker.Stripe.Subscriptions.Tests.csproj --configuration Release --no-build --no-restore --verbosity minimal
+        run: dotnet test --project test/Soenneker.Stripe.Subscriptions.Tests/Soenneker.Stripe.Subscriptions.Tests.csproj --configuration Release --no-build --no-restore --verbosity minimal
 
       - name: Pack
         run: dotnet pack src/Soenneker.Stripe.Subscriptions/Soenneker.Stripe.Subscriptions.csproj --configuration Release --no-build --no-restore --output . --verbosity minimal
