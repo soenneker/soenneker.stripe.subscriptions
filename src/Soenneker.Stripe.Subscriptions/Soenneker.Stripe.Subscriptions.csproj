@@ -45,6 +45,6 @@
     
     <ItemGroup>
       <PackageReference Include="Soenneker.Extensions.DateTime" Version="4.0.1774" />
-      <PackageReference Include="Soenneker.Stripe.Client" Version="4.0.1443" />
+      <PackageReference Include="Soenneker.Stripe.Client" Version="4.0.1444" />
     </ItemGroup>
 </Project>
