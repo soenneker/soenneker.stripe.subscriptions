@@ -14,7 +14,6 @@ using System.Threading.Tasks;
 
 namespace Soenneker.Stripe.Subscriptions;
 
-///<inheritdoc cref="IStripeSubscriptionsUtil"/>
 public sealed class StripeSubscriptionsUtil : IStripeSubscriptionsUtil
 {
     private readonly ILogger<StripeSubscriptionsUtil> _logger;
@@ -124,9 +123,15 @@ public sealed class StripeSubscriptionsUtil : IStripeSubscriptionsUtil
 
     public async ValueTask<Subscription?> UpdatePrice(string subscriptionId, string newPriceId, CancellationToken cancellationToken = default)
     {
+        Subscription? subscription = await GetById(subscriptionId, cancellationToken).NoSync();
+        SubscriptionItem? existingItem = subscription?.Items?.Data?.FirstOrDefault();
+
+        if (existingItem is null)
+            return null;
+
         var options = new SubscriptionUpdateOptions
         {
-            Items = [new SubscriptionItemOptions { Price = newPriceId }],
+            Items = [new SubscriptionItemOptions { Id = existingItem.Id, Price = newPriceId }],
             ProrationBehavior = "none"
         };
         return await Update(subscriptionId, options, null, cancellationToken);
@@ -202,19 +207,15 @@ public sealed class StripeSubscriptionsUtil : IStripeSubscriptionsUtil
             .NoSync();
         foreach (Subscription sub in allSubs)
         {
+            if (sub.Status is "canceled" or "incomplete_expired")
+                continue;
+
             await CancelById(sub.Id, cancellationToken)
                 .NoSync();
         }
     }
 
-    /// <summary>
-    /// Releases resources used by the current instance.
-    /// </summary>
     public void Dispose() => _service.Dispose();
 
-    /// <summary>
-    /// Asynchronously releases resources used by the current instance.
-    /// </summary>
-    /// <returns>A task that represents the asynchronous operation.</returns>
     public ValueTask DisposeAsync() => _service.DisposeAsync();
 }

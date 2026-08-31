@@ -7,10 +7,20 @@ using Stripe;
 namespace Soenneker.Stripe.Subscriptions.Abstract;
 
 /// <summary>
-/// Defines CRUD operations for Stripe subscriptions.
+/// Creates, retrieves, updates, searches, and cancels Stripe subscriptions.
 /// </summary>
 public interface IStripeSubscriptionsUtil : IDisposable, IAsyncDisposable
 {
+    /// <summary>
+    /// Releases the lazily initialized subscription service owned by this utility.
+    /// </summary>
+    new void Dispose();
+
+    /// <summary>
+    /// Asynchronously releases the lazily initialized subscription service owned by this utility.
+    /// </summary>
+    new ValueTask DisposeAsync();
+
     /// <summary>
     /// Creates a new subscription using the provided options.
     /// </summary>
@@ -76,7 +86,7 @@ public interface IStripeSubscriptionsUtil : IDisposable, IAsyncDisposable
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Changes the price for an existing subscription without prorating.
+    /// Changes the price on the subscription's first item without prorating.
     /// </summary>
     /// <param name="subscriptionId">The subscription ID.</param>
     /// <param name="newPriceId">The new price ID.</param>
@@ -85,7 +95,7 @@ public interface IStripeSubscriptionsUtil : IDisposable, IAsyncDisposable
     ValueTask<Subscription?> UpdatePrice(string subscriptionId, string newPriceId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Adjusts the billing anchor (trial end) date for a subscription without prorating.
+    /// Sets the subscription trial end, which also moves its billing anchor, without prorating.
     /// </summary>
     /// <param name="subscription">The subscription to update.</param>
     /// <param name="dateTime">New billing anchor date/time.</param>
@@ -141,7 +151,7 @@ public interface IStripeSubscriptionsUtil : IDisposable, IAsyncDisposable
     ValueTask<bool> IsActive(string subscriptionId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Cancels all subscriptions (active and inactive).
+    /// Immediately cancels every nonterminal subscription in the account.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
     ValueTask CancelAll(CancellationToken cancellationToken = default);
