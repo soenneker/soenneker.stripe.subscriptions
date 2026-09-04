@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 
 namespace Soenneker.Stripe.Subscriptions;
 
+/// <inheritdoc cref="IStripeSubscriptionsUtil" />
 public sealed class StripeSubscriptionsUtil : IStripeSubscriptionsUtil
 {
     private readonly ILogger<StripeSubscriptionsUtil> _logger;
