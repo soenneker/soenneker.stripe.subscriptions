@@ -100,17 +100,8 @@ public sealed class StripeSubscriptionsUtil : IStripeSubscriptionsUtil
         if (!activeOnly || allSubs.Count == 0)
             return allSubs;
 
-        // Avoid LINQ allocations; preserve order.
-        var active = new List<Subscription>(allSubs.Count);
-
-        for (var i = 0; i < allSubs.Count; i++)
-        {
-            Subscription s = allSubs[i];
-            if (s.Status == "active")
-                active.Add(s);
-        }
-
-        return active;
+        allSubs.RemoveAll(static subscription => subscription.Status != "active");
+        return allSubs;
     }
 
     public async ValueTask<Subscription?> Update(string subscriptionId, SubscriptionUpdateOptions updateOptions, RequestOptions? requestOptions = null,
