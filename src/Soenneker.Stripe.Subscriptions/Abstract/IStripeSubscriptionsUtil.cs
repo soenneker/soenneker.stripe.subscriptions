@@ -2,7 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Stripe;
+using Soenneker.Stripe.OpenApiClient.Models;
+using Soenneker.Stripe.Client;
 
 namespace Soenneker.Stripe.Subscriptions.Abstract;
 
@@ -27,7 +28,7 @@ public interface IStripeSubscriptionsUtil : IDisposable, IAsyncDisposable
     /// <param name="options">Stripe subscription create options.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The created <see cref="Subscription"/>, or null if creation failed.</returns>
-    ValueTask<Subscription?> Create(SubscriptionCreateOptions options, CancellationToken cancellationToken = default);
+    ValueTask<Subscription?> Create(PostSubscriptionsXWwwFormUrlencodedRequest options, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Creates a new subscription for a customer with a single price item.
@@ -82,7 +83,7 @@ public interface IStripeSubscriptionsUtil : IDisposable, IAsyncDisposable
     /// <param name="requestOptions">Optional Stripe request options.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The updated <see cref="Subscription"/>, or null if update failed.</returns>
-    ValueTask<Subscription?> Update(string subscriptionId, SubscriptionUpdateOptions updateOptions, RequestOptions? requestOptions = null,
+    ValueTask<Subscription?> Update(string subscriptionId, PostSubscriptionsSubscriptionExposedIdXWwwFormUrlencodedRequest updateOptions, StripeRequestOptions? requestOptions = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
