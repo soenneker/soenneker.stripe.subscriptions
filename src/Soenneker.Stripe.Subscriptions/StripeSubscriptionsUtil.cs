@@ -31,7 +31,7 @@ public sealed class StripeSubscriptionsUtil(IStripeClientUtil client) : IStripeS
     public async ValueTask<Subscription?> GetById(string subscriptionId, CancellationToken cancellationToken = default)
     {
         var api = await client.Get(cancellationToken);
-        return await api.V1.Subscriptions[subscriptionId].GetAsync(new(), cancellationToken: cancellationToken);
+        return await api.V1.Subscriptions[subscriptionId].GetAsync(cancellationToken: cancellationToken);
     }
 
     private async ValueTask<List<Subscription>> List(string? customerId, CancellationToken cancellationToken)
@@ -41,7 +41,7 @@ public sealed class StripeSubscriptionsUtil(IStripeClientUtil client) : IStripeS
         string? cursor = null;
         do
         {
-            var page = await api.V1.Subscriptions.GetAsync(new(), c => { c.QueryParameters.Customer = customerId; c.QueryParameters.Limit = 100;
+            var page = await api.V1.Subscriptions.GetAsync(c => { c.QueryParameters.Customer = customerId; c.QueryParameters.Limit = 100;
                 c.QueryParameters.StartingAfter = cursor; c.QueryParameters.Status = GetSubscriptionsStatusParameter.All; }, cancellationToken);
             if (page?.Data is not { Count: > 0 }) break;
             result.AddRange(page.Data);
@@ -55,7 +55,7 @@ public sealed class StripeSubscriptionsUtil(IStripeClientUtil client) : IStripeS
     public async ValueTask<Subscription?> GetByUserId(string userId, CancellationToken cancellationToken = default)
     {
         var api = await client.Get(cancellationToken);
-        var page = await api.V1.Subscriptions.Search.GetAsync(new(), c => c.QueryParameters.Query = $"metadata[\"userId\"]:\"{userId}\"", cancellationToken);
+        var page = await api.V1.Subscriptions.Search.GetAsync(c => c.QueryParameters.Query = $"metadata[\"userId\"]:\"{userId}\"", cancellationToken);
         return page?.Data?.FirstOrDefault();
     }
 
