@@ -23,7 +23,7 @@ public sealed class StripeSubscriptionsUtil(IStripeClientUtil client) : IStripeS
         Create(new PostSubscriptionsXWwwFormUrlencodedRequest
         {
             Customer = customerId, Items = [new() { Price = priceId }], DefaultPaymentMethod = defaultPaymentMethodId,
-            TrialEnd = trialEnd.HasValue ? new() { Integer = checked((int)trialEnd.Value.ToUnixTimeSeconds()) } : null,
+            TrialEnd = trialEnd.HasValue ? new() { Int64 = trialEnd.Value.ToUnixTimeSeconds() } : null,
             AutomaticTax = new() { Enabled = false },
             Metadata = new() { PostSubscriptionsXWwwFormUrlencodedRequestMetadataAnyOf1 = new() { AdditionalData = new Dictionary<string, object> { ["userId"] = userId } } }
         }, cancellationToken);
@@ -84,7 +84,7 @@ public sealed class StripeSubscriptionsUtil(IStripeClientUtil client) : IStripeS
     public ValueTask<Subscription?> UpdateBillingAnchor(Subscription subscription, DateTimeOffset dateTime, TimeZoneInfo timeZoneInfo,
         CancellationToken cancellationToken = default) => Update(subscription.Id!, new()
         {
-            TrialEnd = new() { Integer = checked((int)dateTime.ToUnixTimeSeconds()) },
+            TrialEnd = new() { Int64 = dateTime.ToUnixTimeSeconds() },
             ProrationBehavior = PostSubscriptionsSubscriptionExposedIdXWwwFormUrlencodedRequestProrationBehavior.None
         }, cancellationToken: cancellationToken);
 
